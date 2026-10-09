@@ -134,7 +134,7 @@ def get_distortion(args, x_hat, y, u, v, rgb, device):
             rgb_orig = torch.from_numpy(rgb).unsqueeze(0).float() / 255.0
             rgb_orig = rgb_orig.to(device)
             with torch.no_grad():
-                lpips_val = lpips_model(rgb_orig, rgb_t).item()
+                lpips_val = lpips_model(rgb_orig, rgb_t, normalize=True).item()
         else:
             lpips_val = 0.
         curr_lpips = [lpips_val]
@@ -462,7 +462,7 @@ def init_func(args, gpu_num):
         p_frame_net.half()
 
     global lpips_model
-    lpips_model = lpips.LPIPS(net='alex').to(device)
+    lpips_model = lpips.LPIPS(net='vgg').to(device)
     lpips_model.eval()
 
     global dists_model
