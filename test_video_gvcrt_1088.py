@@ -431,9 +431,13 @@ def init_func(args, gpu_num):
         gpu_id = process_idx % gpu_num
     if gpu_id >= 0:
         if args.cuda_idx is not None:
-            gpu_id = args.cuda_idx[gpu_id]
-        os.environ['CUDA_VISIBLE_DEVICES'] = str(gpu_id)
-        device = "cuda:0"
+            # GVC-RT 的 --cuda_idx 是 str 类型（type=str），这里必须先转 int
+            gpu_id = int(args.cuda_idx[gpu_id])
+        # Cluster policy: never assign CUDA_VISIBLE_DEVICES inside a PBS-launched script
+        # (it breaks scheduler accounting). Visible devices are already restricted by
+        # `docker --gpus`; bind this process to the given device and use the real index.
+        torch.cuda.set_device(gpu_id)
+        device = f"cuda:{gpu_id}"
     else:
         device = "cpu"
 
@@ -477,9 +481,13 @@ def main():
     if args.force_zero_thres is not None and args.force_zero_thres < 0:
         args.force_zero_thres = None
 
+    # Cluster policy: GPU visibility is owned by the scheduler / `docker --gpus`;
+    # do not touch CUDA_VISIBLE_DEVICES here. --cuda_idx is only used by init_func()
+    # to pick an index among the already-visible devices.
     if args.cuda_idx is not None:
-        cuda_device = ','.join([str(s) for s in args.cuda_idx])
-        os.environ['CUDA_VISIBLE_DEVICES'] = cuda_device
+        idx = [int(i) for i in args.cuda_idx]
+        assert all(0 <= i < torch.cuda.device_count() for i in idx), \
+            f"--cuda_idx {args.cuda_idx} out of range (visible={torch.cuda.device_count()})"
 
     worker_num = args.worker
     assert worker_num >= 1
