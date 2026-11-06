@@ -101,6 +101,11 @@ def get_src_frame(args, src_reader, device):
     return x, y, u, v, rgb
 
 def get_distortion(args, x_hat, y, u, v, rgb, device):
+    # yuv420 分支没有计算 LPIPS/DISTS，这里给默认值；
+    # png 分支会覆盖。（上游只在 PNG 路径测过，YUV 路径会 UnboundLocalError）
+    curr_lpips = [0.]
+    curr_dists = [0.]
+
     if args['src_type'] == 'yuv420':
         y_rec, uv_rec = yuv_444_to_420(x_hat)
         y_rec = torch.clamp(y_rec * 255, 0, 255).squeeze(0).cpu().numpy()
