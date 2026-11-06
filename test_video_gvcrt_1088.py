@@ -8,7 +8,13 @@ import os
 import time
 
 import lpips
-from DISTS_pytorch import DISTS
+
+# DISTS 只在算指标时用；镜像里没装这个包，缺了就把该指标置 0（见 get_distortion）
+try:
+    from DISTS_pytorch import DISTS
+except ImportError:
+    DISTS = None
+
 import torch
 import numpy as np
 from tqdm import tqdm
@@ -470,8 +476,9 @@ def init_func(args, gpu_num):
     lpips_model.eval()
 
     global dists_model
-    dists_model = DISTS().to(device)
-    dists_model.eval()
+    dists_model = DISTS().to(device) if DISTS is not None else None
+    if dists_model is not None:
+        dists_model.eval()
 
 def main():
     begin_time = time.time()
