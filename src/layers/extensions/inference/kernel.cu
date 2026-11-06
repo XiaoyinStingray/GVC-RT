@@ -9,6 +9,7 @@
 #include "common.h"
 #include "def.h"
 #include <vector>
+#include <tuple>
 
 template <typename vec_t>
 __forceinline__ __host__ bool can_vectorize(void* pointer)
@@ -92,7 +93,14 @@ process_with_mask_dispatcher(torch::Tensor& y_res, torch::Tensor& y_q, torch::Te
                              const torch::Tensor& scales, const torch::Tensor& means,
                              const torch::Tensor& mask, const float force_zero_thres)
 {
-    auto [blockDim, gridDim, stream, useVec, biasSafe, N, HW] = get_kernel_launch_info<vec_t>(y);
+    auto _li1 = get_kernel_launch_info<vec_t>(y);
+    auto blockDim = std::get<0>(_li1);
+    auto gridDim = std::get<1>(_li1);
+    auto stream = std::get<2>(_li1);
+    auto useVec = std::get<3>(_li1);
+    auto biasSafe = std::get<4>(_li1);
+    auto N = std::get<5>(_li1);
+    auto HW = std::get<6>(_li1);
     const bool force_zero = force_zero_thres > 0.f;
 
     auto launch_kernel = [&](auto in_v) {
@@ -158,7 +166,14 @@ template <typename scalar_t, typename vec_t>
 __forceinline__ void combine_for_reading_2x_dispatcher(torch::Tensor& out, const torch::Tensor& x,
                                                        const torch::Tensor& mask)
 {
-    auto [blockDim, gridDim, stream, useVec, biasSafe, N, HW] = get_kernel_launch_info<vec_t>(x, 2);
+    auto _li2 = get_kernel_launch_info<vec_t>(x, 2);
+    auto blockDim = std::get<0>(_li2);
+    auto gridDim = std::get<1>(_li2);
+    auto stream = std::get<2>(_li2);
+    auto useVec = std::get<3>(_li2);
+    auto biasSafe = std::get<4>(_li2);
+    auto N = std::get<5>(_li2);
+    auto HW = std::get<6>(_li2);
     if (useVec) {
         combine_for_reading_2x_kernel<vec_t><<<gridDim, blockDim, 0, stream>>>(out, x, mask, N);
     } else {
@@ -200,7 +215,14 @@ template <typename scalar_t, typename vec_t>
 __forceinline__ void restore_y_2x_dispatcher(torch::Tensor& out, const torch::Tensor& y,
                                              const torch::Tensor& means, const torch::Tensor& mask)
 {
-    auto [blockDim, gridDim, stream, useVec, biasSafe, N, HW] = get_kernel_launch_info<vec_t>(y);
+    auto _li3 = get_kernel_launch_info<vec_t>(y);
+    auto blockDim = std::get<0>(_li3);
+    auto gridDim = std::get<1>(_li3);
+    auto stream = std::get<2>(_li3);
+    auto useVec = std::get<3>(_li3);
+    auto biasSafe = std::get<4>(_li3);
+    auto N = std::get<5>(_li3);
+    auto HW = std::get<6>(_li3);
     if (useVec) {
         restore_y_2x_kernel<vec_t><<<gridDim, blockDim, 0, stream>>>(out, y, means, mask, N);
     } else {
@@ -253,7 +275,14 @@ template <typename scalar_t, typename vec_t>
 __forceinline__ void restore_y_4x_dispatcher(torch::Tensor& out, const torch::Tensor& y,
                                              const torch::Tensor& means, const torch::Tensor& mask)
 {
-    auto [blockDim, gridDim, stream, useVec, biasSafe, N, HW] = get_kernel_launch_info<vec_t>(y);
+    auto _li4 = get_kernel_launch_info<vec_t>(y);
+    auto blockDim = std::get<0>(_li4);
+    auto gridDim = std::get<1>(_li4);
+    auto stream = std::get<2>(_li4);
+    auto useVec = std::get<3>(_li4);
+    auto biasSafe = std::get<4>(_li4);
+    auto N = std::get<5>(_li4);
+    auto HW = std::get<6>(_li4);
     if (useVec) {
         restore_y_4x_kernel<vec_t><<<gridDim, blockDim, 0, stream>>>(out, y, means, mask, N);
     } else {
@@ -310,7 +339,12 @@ build_index_dec_dispatcher(torch::Tensor& out, torch::optional<torch::Tensor>& c
                            const scalar_t scale_max, const scalar_t log_scale_min,
                            const scalar_t log_step_recip, const scalar_t skip_thres)
 {
-    auto [blockDim, gridDim, stream, useVec, N] = get_kernel_launch_info_flatten<vec_t>(scales);
+    auto _li13 = get_kernel_launch_info_flatten<vec_t>(scales);
+    auto blockDim = std::get<0>(_li13);
+    auto gridDim = std::get<1>(_li13);
+    auto stream = std::get<2>(_li13);
+    auto useVec = std::get<3>(_li13);
+    auto N = std::get<4>(_li13);
     const bool with_cond = static_cast<float>(skip_thres) > 0.f;
 
     auto launch_kernel = [&](auto in_v, auto out_v, auto cond_out_v) {
@@ -378,7 +412,12 @@ __forceinline__ void build_index_enc_dispatcher(
     const torch::Tensor& scales, const scalar_t scale_min, const scalar_t scale_max,
     const scalar_t log_scale_min, const scalar_t log_step_recip, const scalar_t skip_thres)
 {
-    auto [blockDim, gridDim, stream, useVec, N] = get_kernel_launch_info_flatten<vec_t>(scales);
+    auto _li14 = get_kernel_launch_info_flatten<vec_t>(scales);
+    auto blockDim = std::get<0>(_li14);
+    auto gridDim = std::get<1>(_li14);
+    auto stream = std::get<2>(_li14);
+    auto useVec = std::get<3>(_li14);
+    auto N = std::get<4>(_li14);
     const bool with_cond = static_cast<float>(skip_thres) > 0.f;
 
     auto launch_kernel = [&](auto in_v, auto out_v, auto cond_out_v) {
@@ -456,7 +495,14 @@ __global__ void bias_wsilu_kernel(GPUTensor1D<vec_t> x, const GPUTensor1D<scalar
 template <typename scalar_t, typename vec_t>
 __forceinline__ void bias_wsilu_dispatcher(torch::Tensor& x, const torch::Tensor& bias)
 {
-    auto [blockDim, gridDim, stream, useVec, biasSafe, N, HW] = get_kernel_launch_info<vec_t>(x);
+    auto _li5 = get_kernel_launch_info<vec_t>(x);
+    auto blockDim = std::get<0>(_li5);
+    auto gridDim = std::get<1>(_li5);
+    auto stream = std::get<2>(_li5);
+    auto useVec = std::get<3>(_li5);
+    auto biasSafe = std::get<4>(_li5);
+    auto N = std::get<5>(_li5);
+    auto HW = std::get<6>(_li5);
     if (useVec) {
         if (biasSafe) {
             bias_wsilu_kernel<scalar_t, vec_t, true><<<gridDim, blockDim, 0, stream>>>(x, bias, N, HW);
@@ -505,7 +551,14 @@ __forceinline__ void bias_shortcut_dispatcher(torch::Tensor& x, const torch::Ten
                                               const torch::Tensor& quant_step,
                                               const torch::Tensor& shortcut)
 {
-    auto [blockDim, gridDim, stream, useVec, biasSafe, N, HW] = get_kernel_launch_info<vec_t>(x);
+    auto _li6 = get_kernel_launch_info<vec_t>(x);
+    auto blockDim = std::get<0>(_li6);
+    auto gridDim = std::get<1>(_li6);
+    auto stream = std::get<2>(_li6);
+    auto useVec = std::get<3>(_li6);
+    auto biasSafe = std::get<4>(_li6);
+    auto N = std::get<5>(_li6);
+    auto HW = std::get<6>(_li6);
     if (useVec) {
         if (biasSafe) {
             bias_shortcut_kernel<scalar_t, vec_t, true, with_shortcut, with_quant>
@@ -561,7 +614,14 @@ __forceinline__ void bias_shortcut_no_inplace_dispatcher(torch::Tensor& out, con
                                                          const torch::Tensor& bias,
                                                          const torch::Tensor& shortcut)
 {
-    auto [blockDim, gridDim, stream, useVec, biasSafe, N, HW] = get_kernel_launch_info<vec_t>(x);
+    auto _li7 = get_kernel_launch_info<vec_t>(x);
+    auto blockDim = std::get<0>(_li7);
+    auto gridDim = std::get<1>(_li7);
+    auto stream = std::get<2>(_li7);
+    auto useVec = std::get<3>(_li7);
+    auto biasSafe = std::get<4>(_li7);
+    auto N = std::get<5>(_li7);
+    auto HW = std::get<6>(_li7);
     if (useVec) {
         if (biasSafe) {
             bias_shortcut_no_inplace_kernel<scalar_t, vec_t, true>
@@ -606,7 +666,14 @@ template <typename scalar_t, typename vec_t>
 __forceinline__ void bias_shortcut_2_dispatcher(torch::Tensor& x, const torch::Tensor& bias,
                                                 torch::Tensor& shortcut)
 {
-    auto [blockDim, gridDim, stream, useVec, biasSafe, N, HW] = get_kernel_launch_info<vec_t>(x);
+    auto _li8 = get_kernel_launch_info<vec_t>(x);
+    auto blockDim = std::get<0>(_li8);
+    auto gridDim = std::get<1>(_li8);
+    auto stream = std::get<2>(_li8);
+    auto useVec = std::get<3>(_li8);
+    auto biasSafe = std::get<4>(_li8);
+    auto N = std::get<5>(_li8);
+    auto HW = std::get<6>(_li8);
     if (useVec) {
         if (biasSafe) {
             bias_shortcut_2_kernel<scalar_t, vec_t, true>
@@ -665,7 +732,14 @@ __global__ void bias_wsilu_chunk_add_kernel(GPUTensor1D<vec_t> x, const GPUTenso
 template <typename scalar_t, typename vec_t>
 __forceinline__ void bias_wsilu_chunk_add_dispatcher(torch::Tensor& x, const torch::Tensor& bias)
 {
-    auto [blockDim, gridDim, stream, useVec, biasSafe, N, HW] = get_kernel_launch_info<vec_t>(x, 2);
+    auto _li9 = get_kernel_launch_info<vec_t>(x, 2);
+    auto blockDim = std::get<0>(_li9);
+    auto gridDim = std::get<1>(_li9);
+    auto stream = std::get<2>(_li9);
+    auto useVec = std::get<3>(_li9);
+    auto biasSafe = std::get<4>(_li9);
+    auto N = std::get<5>(_li9);
+    auto HW = std::get<6>(_li9);
     if (useVec) {
         if (biasSafe) {
             bias_wsilu_chunk_add_kernel<scalar_t, vec_t, true>
@@ -841,7 +915,14 @@ __global__ void round_and_to_int8_kernel(GPUTensor1D<vec_t1> z, GPUTensor1D<vec_
 template <typename scalar_t, typename vec_t>
 __forceinline__ void round_and_to_int8_dispatcher(torch::Tensor& z, torch::Tensor& z_int8)
 {
-    auto [blockDim, gridDim, stream, useVec, biasSafe, N, HW] = get_kernel_launch_info<vec_t>(z);
+    auto _li10 = get_kernel_launch_info<vec_t>(z);
+    auto blockDim = std::get<0>(_li10);
+    auto gridDim = std::get<1>(_li10);
+    auto stream = std::get<2>(_li10);
+    auto useVec = std::get<3>(_li10);
+    auto biasSafe = std::get<4>(_li10);
+    auto N = std::get<5>(_li10);
+    auto HW = std::get<6>(_li10);
     if (useVec) {
         round_and_to_int8_kernel<scalar_t, vec_t, char4>
             <<<gridDim, blockDim, 0, stream>>>(z, z_int8, N);
@@ -885,7 +966,14 @@ __forceinline__ void clamp_reciprocal_with_quant_dispatcher(torch::Tensor& q_dec
                                                             const torch::Tensor& q_dec,
                                                             torch::Tensor& y, const float min_val)
 {
-    auto [blockDim, gridDim, stream, useVec, biasSafe, N, HW] = get_kernel_launch_info<vec_t>(q_dec);
+    auto _li11 = get_kernel_launch_info<vec_t>(q_dec);
+    auto blockDim = std::get<0>(_li11);
+    auto gridDim = std::get<1>(_li11);
+    auto stream = std::get<2>(_li11);
+    auto useVec = std::get<3>(_li11);
+    auto biasSafe = std::get<4>(_li11);
+    auto N = std::get<5>(_li11);
+    auto HW = std::get<6>(_li11);
     if (useVec) {
         clamp_reciprocal_with_quant_kernel<scalar_t, vec_t><<<gridDim, blockDim, 0, stream>>>(
             q_dec_clamp, q_dec, y, static_cast<scalar_t>(min_val), N);
@@ -927,7 +1015,14 @@ template <typename scalar_t, typename vec_t>
 __forceinline__ void add_and_multiply_dispatcher(torch::Tensor& x0, const torch::Tensor& x1,
                                                  const torch::Tensor& q)
 {
-    auto [blockDim, gridDim, stream, useVec, biasSafe, N, HW] = get_kernel_launch_info<vec_t>(x0);
+    auto _li12 = get_kernel_launch_info<vec_t>(x0);
+    auto blockDim = std::get<0>(_li12);
+    auto gridDim = std::get<1>(_li12);
+    auto stream = std::get<2>(_li12);
+    auto useVec = std::get<3>(_li12);
+    auto biasSafe = std::get<4>(_li12);
+    auto N = std::get<5>(_li12);
+    auto HW = std::get<6>(_li12);
     if (useVec) {
         add_and_multiply_kernel<vec_t><<<gridDim, blockDim, 0, stream>>>(x0, x1, q, N);
     } else {
